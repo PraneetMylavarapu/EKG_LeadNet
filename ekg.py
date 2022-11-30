@@ -48,7 +48,7 @@ def load_ekgs() -> tuple((np.ndarray, dict[str: None])):
                     ekg, feature = load_ekg(path + '/' + file[:-4])
                     ekgs.append(ekg)
                     features.append(feature)
-    return ekgs, features
+    return np.array(ekgs), pd.DataFrame(data=features)
 
 
 def load_ekg(filename: str) -> tuple((np.ndarray, dict[str: None])):
