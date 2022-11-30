@@ -15,20 +15,6 @@ import glob
 import os
 import ntpath
 
-def get_ekg_features_test() -> pd.DataFrame:
-    from sklearn import datasets
-
-    iris = datasets.load_iris()
-    data = pd.DataFrame({
-        'sepal length': iris.data[:, 0],
-        'sepal width':iris.data[:, 1],
-        'petal length':iris.data[:, 2],
-        'petal width':iris.data[:, 3],
-        'species':iris.target
-    })
-
-    return data
-
 def load_ekgs() -> tuple((np.ndarray, dict[str: None])):
     ekgs = []
     features = []
@@ -72,24 +58,3 @@ def get_ekg_features(ekg: np.ndarray) -> pd.DataFrame:
     Takes in an ekg and a list of features and returns them
     """
     pass
-
-if __name__ == '__main__':
-    ekg, features = load_ekg('training/chapman_shaoxing/g1/JS00001')
-    print(features)
-
-    
-def remove_noise(ekg: np.ndarray):
-    """
-    Removes noise from an ekg by...
-    """
-    pass
-
-
-def get_peak_indices(ekg: np.ndarray) -> list[int]:
-    """
-    Finds peaks in the ekg
-    returns:
-        peaks: a list of indices where peaks occur in the waveform
-    """
-    peaks = []
-    return peaks
