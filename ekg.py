@@ -53,13 +53,6 @@ def load_ekg(filename: str) -> tuple((np.ndarray, dict[str: None])):
             features[contents[0]] = contents[1][:len(contents[1])-1]
     return ekg, features
 
-def get_ekg_features_test(leads: np.ndarray) -> pd.DataFrame:
-    features = {}
-    for i, lead in enumerate(leads):
-        features['difference'+str(i+1)] = max(lead) - min(lead) / (1e3)
-        features['area'+str(i+1)] = np.trapz(lead - min(lead)) / (1e6)
-    return features
-
 def get_ekg_features(ekg: np.ndarray) -> pd.DataFrame:
     """
     Takes in an ekg and a list of features and returns them
