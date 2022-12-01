@@ -29,24 +29,31 @@ for i in features1.index.values.tolist():
 # Finalize variables
 ekgs = ekgs_temp
 features = pd.concat([features0, features1])
+features = features.reset_index()
 
 # Extract features from waveforms
 print('Extracting features...')
 features2 = []
 ekgs_temp = []
 for ekg in ekgs:
-    f_dict, f = get_ekg_features_test(ekg)
+    fs = get_ekg_features_test(ekg)
+    f_dict = {}
+    for i, f in enumerate(fs):
+        for key in f:
+            f_dict[key+str(i+1)] = f[key]
+    f = np.array([list(x.values()) for x in fs])
     features2.append(f_dict)
     ekg_temp = np.zeros((ekg.shape[0], ekg.shape[1]+len(f[0])))
     ekg_temp[:, :ekg.shape[1]] = ekg
     ekg_temp[:, -len(f[0]):] = f
+    ekgs_temp.append(ekg_temp)
 ekgs = np.array(ekgs_temp)
 
 features2 = pd.DataFrame(data=features2)
-features = features.join(features2)
+features_tree = features.join(features2)
 
 
-print('training decision tree...')
-baseline_tree(features, 'ECG: atrial fibrillation')
+# print('training decision tree...')
+# baseline_tree(features_tree, 'ECG: atrial fibrillation')
 print('training neural network...')
 baseline_network(features, ekgs, 'ECG: atrial fibrillation')

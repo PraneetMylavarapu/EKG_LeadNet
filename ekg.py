@@ -143,15 +143,13 @@ def get_ekg_features_test(leads: np.ndarray) -> pd.DataFrame:
     Easy to calculate features to use for writing code 
     while the useful feature extraction is being written
     """
-    features = {}
-    fs = []
+    features = []
     for i, lead in enumerate(leads):
-        f1 = max(lead) - min(lead) / (1e3)
-        f2 = np.trapz(lead - min(lead)) / (1e6)
-        features['difference'+str(i+1)] = f1
-        features['area'+str(i+1)] = f2
-        fs.append([f1, f2])
-    return features, fs
+        lead_features = {}
+        lead_features['difference'] = max(lead) - min(lead) / (1e3)
+        lead_features['area'] = np.trapz(lead - min(lead)) / (1e6)
+        features.append(lead_features)
+    return features
 
 def get_ekg_features(ekg: np.ndarray) -> pd.DataFrame:
     """

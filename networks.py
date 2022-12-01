@@ -8,14 +8,16 @@ def baseline_network(data: pd.DataFrame, ekgs: np.ndarray, target: str):
     feature_labels = data.columns.copy().tolist()
     feature_labels.remove(target)
 
-    X = data[feature_labels]
+    X = np.zeros((data.shape[0], data.shape[1]-1 + ekgs.shape[-1]))
+    X[:, :data.shape[1]-1] = data[feature_labels].to_numpy()
+    X[:, -ekgs.shape[-1]:] = ekgs[:, 1, :]
     y = data[target]
 
     # Split to train and test
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4)
     X_valid, X_test, y_valid, y_test = train_test_split(X_test, y_test, test_size=0.5)
     model = tf.keras.models.Sequential([
-        tf.keras.layers.Dense(64, activation='relu', input_shape=(26,)),
+        tf.keras.layers.Dense(64, activation='relu', input_shape=(X.shape[1],)),
         tf.keras.layers.Dense(128, activation='relu'),
         tf.keras.layers.Dense(1, activation='sigmoid')
     ])
@@ -30,7 +32,7 @@ def baseline_network(data: pd.DataFrame, ekgs: np.ndarray, target: str):
     X_train, 
     y_train, 
     epochs=100,
-    validation_data=(X_valid, y_valid)
+    validation_data=(X_valid, y_valid),
     )
 
     metrics = model.evaluate(X_test, y_test)
