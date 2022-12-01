@@ -196,7 +196,6 @@ def remove_baseline_wander(signal):
             baseline = pywt.idwt(baseline, np.zeros((len(baseline))), "db4")
         new = x - baseline[: len(x)]
         proc_signal = np.vstack((proc_signal, new))
-        print(proc_signal.shape, signal.shape)
     return proc_signal
 
 def beat_characteristics(ekg, lead_num=1):

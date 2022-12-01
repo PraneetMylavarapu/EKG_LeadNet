@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 from ekg import get_ekg_features_test, load_ekgs
 from trees import baseline_tree
-from networks import baseline_network
+# from networks import baseline_network
 from random import sample
 
 ekgs, features, diagnoses = load_ekgs()
@@ -55,5 +55,5 @@ features_tree = features.join(features2)
 
 print('training decision tree...')
 baseline_tree(features_tree, 'ECG: atrial fibrillation')
-print('training neural network...')
-baseline_network(features, ekgs, 'ECG: atrial fibrillation')
+# print('training neural network...')
+# baseline_network(features, ekgs, 'ECG: atrial fibrillation')
