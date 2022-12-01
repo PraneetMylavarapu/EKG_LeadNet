@@ -53,7 +53,7 @@ features2 = pd.DataFrame(data=features2)
 features_tree = features.join(features2)
 
 
-# print('training decision tree...')
-# baseline_tree(features_tree, 'ECG: atrial fibrillation')
+print('training decision tree...')
+baseline_tree(features_tree, 'ECG: atrial fibrillation')
 print('training neural network...')
 baseline_network(features, ekgs, 'ECG: atrial fibrillation')

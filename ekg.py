@@ -5,15 +5,20 @@ import matplotlib.pyplot as plt
 from matplotlib import gridspec
 import seaborn as sns
 
+from sklearn import preprocessing
+
 import scipy as sp
 from scipy import signal, fftpack
-# from scipy.signal import find_peaks, gaussian_filter1d, argrelmax
+from scipy.signal import find_peaks, argrelmax
 from scipy.io import loadmat
 from statistics import median, mean
 
 import glob
 import os
 import ntpath
+import statistics
+
+
 
 # Dictionary that maps a diagnosis code to the diagnosis name
 DIAGNOSES = {
@@ -146,8 +151,11 @@ def get_ekg_features_test(leads: np.ndarray) -> pd.DataFrame:
     features = []
     for i, lead in enumerate(leads):
         lead_features = {}
+        HR, RR_var, RR_var_normalized = beat_characteristics(leads, lead_num=1)
         lead_features['difference'] = max(lead) - min(lead) / (1e3)
         lead_features['area'] = np.trapz(lead - min(lead)) / (1e6)
+        # lead_features['HR'] = HR
+        # lead_features['RR_var'] = RR_var
         features.append(lead_features)
     return features
 
@@ -189,3 +197,34 @@ def remove_baseline_wander(signal):
         proc_signal = np.vstack((proc_signal, new))
         print(proc_signal.shape, signal.shape)
     return proc_signal
+
+def beat_characteristics(ekg, lead_num=1):
+    """
+    RR_var: variance in distance between beats (distance between peaks)
+    HR: Heart Rate
+    """
+    RR_var = 100
+    RR_var_normalized = 100
+    HR = 60
+    try:
+        scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
+    
+        lead = ekg[lead_num][1000:4000]    
+        all_peaks, _ = find_peaks(lead, height=max(lead)/1.4, distance=150)
+
+        intervals = np.diff(all_peaks)
+        intervals_normalized = scaler.fit_transform(np.reshape(intervals,(-1,1)))
+        RR_var = statistics.variance(intervals)
+        RR_var_normalized = statistics.variance(np.reshape(intervals_normalized,(1,len(intervals_normalized)))[0])
+        HR = 30000/statistics.mean(intervals)
+    except:
+        pass
+
+    return HR, RR_var, RR_var_normalized
+
+def is_invalid(ekg):
+    for lead_num in range(12):
+        HR, RR_var, RR_var_normalized = beat_characteristics(ekg,lead_num)
+        if RR_var >100000:
+            return True
+    return False
