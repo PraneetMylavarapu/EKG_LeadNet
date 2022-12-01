@@ -17,6 +17,7 @@ import glob
 import os
 import ntpath
 import statistics
+import pywt
 
 
 
@@ -108,7 +109,7 @@ def load_ekg(filename: str) -> tuple((np.ndarray, dict[str: None])):
     """
     # Load the ekg voltage data from the .mat file
     ekg = loadmat(filename + '.mat')['val']
-
+    ekg = remove_baseline_wander(ekg)
     # Load the features from the .hea file
     f = open(filename + '.hea', 'r')
     features = {}
