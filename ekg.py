@@ -17,7 +17,7 @@ import glob
 import os
 import ntpath
 import statistics
-import pywt
+# import pywt
 
 
 
@@ -109,7 +109,7 @@ def load_ekg(filename: str) -> tuple((np.ndarray, dict[str: None])):
     """
     # Load the ekg voltage data from the .mat file
     ekg = loadmat(filename + '.mat')['val']
-    ekg = remove_baseline_wander(ekg)
+
     # Load the features from the .hea file
     f = open(filename + '.hea', 'r')
     features = {}
@@ -144,32 +144,25 @@ def load_ekg(filename: str) -> tuple((np.ndarray, dict[str: None])):
             
     return ekg, features, diagnoses
 
-def get_ekg_features_test(leads: np.ndarray) -> pd.DataFrame:
-    """
-    Easy to calculate features to use for writing code 
-    while the useful feature extraction is being written
-    """
-    features = []
-    for i, lead in enumerate(leads):
-        lead_features = {}
-        HR, RR_var, RR_var_normalized = beat_characteristics(leads, lead_num=1)
-        lead_features['difference'] = max(lead) - min(lead) / (1e3)
-        lead_features['area'] = np.trapz(lead - min(lead)) / (1e6)
-        # lead_features['HR'] = HR
-        # lead_features['RR_var'] = RR_var
-        features.append(lead_features)
-    return features
-
-def get_ekg_features(ekg: np.ndarray) -> pd.DataFrame:
+def get_ekg_features(leads: np.ndarray) -> pd.DataFrame:
     """
     Takes in an ekg and a list of features and returns them
     """
-    pass
+    features = {}
+    HR, RR_var, RR_var_normalized = beat_characteristics(leads, lead_num=1)
+    features['HR'] = HR
+    features['RR_var'] = RR_var
+    for i, lead in enumerate(leads):
+        features['difference' + str(i)] = max(lead) - min(lead) / (1e3)
+        features['area' + str(i)] = np.trapz(lead - min(lead)) / (1e6)
+        
+    return features
 
 def remove_baseline_wander(signal):
+    pass
     """
     Removes baseline wander from all leads, takes nd-array as input
-    """
+    
     proc_signal = np.ndarray((0, signal.shape[1]))
     for x in signal:
         ssds = np.zeros((3))
@@ -197,6 +190,7 @@ def remove_baseline_wander(signal):
         new = x - baseline[: len(x)]
         proc_signal = np.vstack((proc_signal, new))
     return proc_signal
+    """
 
 def beat_characteristics(ekg, lead_num=1):
     """
@@ -225,6 +219,6 @@ def beat_characteristics(ekg, lead_num=1):
 def is_invalid(ekg):
     for lead_num in range(12):
         HR, RR_var, RR_var_normalized = beat_characteristics(ekg,lead_num)
-        if RR_var >100000:
+        if RR_var > 100000:
             return True
     return False

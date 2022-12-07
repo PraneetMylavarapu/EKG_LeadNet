@@ -4,7 +4,7 @@ from sklearn.model_selection import train_test_split
 from sklearn import metrics
 import pandas as pd
 import numpy as np
-from ekg import get_ekg_features_test, load_ekgs
+from ekg import get_ekg_features, load_ekgs
 from trees import baseline_tree
 # from networks import baseline_network
 from random import sample
@@ -36,16 +36,17 @@ print('Extracting features...')
 features2 = []
 ekgs_temp = []
 for ekg in ekgs:
-    fs = get_ekg_features_test(ekg)
-    f_dict = {}
-    for i, f in enumerate(fs):
-        for key in f:
-            f_dict[key+str(i+1)] = f[key]
-    f = np.array([list(x.values()) for x in fs])
-    features2.append(f_dict)
-    ekg_temp = np.zeros((ekg.shape[0], ekg.shape[1]+len(f[0])))
+    fs = get_ekg_features(ekg)
+    
+    # Add the features to the decision tree data
+    features2.append(fs)
+
+    # Insert the features to the ekg of the ekg array so they can be
+    # used to train the neural network
+    f = np.array(list(fs.values()))
+    ekg_temp = np.zeros((ekg.shape[0], ekg.shape[1]+len(f)))
     ekg_temp[:, :ekg.shape[1]] = ekg
-    ekg_temp[:, -len(f[0]):] = f
+    ekg_temp[:, -len(f):] = f
     ekgs_temp.append(ekg_temp)
 ekgs = np.array(ekgs_temp)
 
