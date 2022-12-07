@@ -1,13 +1,9 @@
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.datasets import make_classification
-from sklearn.model_selection import train_test_split
-from sklearn import metrics
 import pandas as pd
 import numpy as np
-from ekg import get_ekg_features, load_ekgs
+from ekg import load_ekgs
+from features import get_features
 from trees import baseline_tree
-# from networks import baseline_network
-from random import sample
+from networks import baseline_network
 
 ekgs, features, diagnoses = load_ekgs()
 features = features.join(diagnoses['ECG: atrial fibrillation'])
@@ -36,7 +32,7 @@ print('Extracting features...')
 features2 = []
 ekgs_temp = []
 for ekg in ekgs:
-    fs = get_ekg_features(ekg)
+    fs = get_features(ekg)
     
     # Add the features to the decision tree data
     features2.append(fs)
@@ -52,9 +48,11 @@ ekgs = np.array(ekgs_temp)
 
 features2 = pd.DataFrame(data=features2)
 features_tree = features.join(features2)
+for col in features_tree.columns:
+    features_tree[col] = features_tree[col].fillna(features_tree[col].median())
 
 
 print('training decision tree...')
 baseline_tree(features_tree, 'ECG: atrial fibrillation')
-# print('training neural network...')
-# baseline_network(features, ekgs, 'ECG: atrial fibrillation')
+print('training neural network...')
+baseline_network(features, ekgs, 'ECG: atrial fibrillation')

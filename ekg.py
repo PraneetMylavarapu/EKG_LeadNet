@@ -1,24 +1,9 @@
 import numpy as np
-import pandas as pd
-
-import matplotlib.pyplot as plt
-from matplotlib import gridspec
-import seaborn as sns
-
-from sklearn import preprocessing
-
-import scipy as sp
-from scipy import signal, fftpack
-from scipy.signal import find_peaks, argrelmax
+from pandas import DataFrame
 from scipy.io import loadmat
-from statistics import median, mean
-
-import glob
+from features import beat_characteristics
 import os
-import ntpath
-import statistics
-# import pywt
-
+from pywt import dwt, idwt
 
 
 # Dictionary that maps a diagnosis code to the diagnosis name
@@ -60,7 +45,7 @@ DIAGNOSES = {
     "164873001": "ECG:left ventricle hypertrophy"
 }
 
-def load_ekgs() -> tuple((np.ndarray, pd.DataFrame, pd.DataFrame)):
+def load_ekgs() -> tuple((np.ndarray, DataFrame, DataFrame)):
     """
     Load all ekgs from the trainig folder
     """
@@ -73,7 +58,8 @@ def load_ekgs() -> tuple((np.ndarray, pd.DataFrame, pd.DataFrame)):
     sources = os.listdir('./training')
     sources.remove('.DS_Store')
     sources.remove('index.html')
-    for source in sources[:3]:
+
+    for source in sources:
         # Second set of directories
         print('getting data from:', source)
         gs = os.listdir('./training/' + source)
@@ -81,26 +67,25 @@ def load_ekgs() -> tuple((np.ndarray, pd.DataFrame, pd.DataFrame)):
         for g in gs:
             # ekg files
             path = './training/' + source + '/' + g
-            for file in os.listdir(path):
-                if file[-4:] == '.mat':
-
-                    # Loading the file might fail, if so then skip it
-                    try:
-                        ekg, feature, diagnosis = load_ekg(path + '/' + file[:-4])
-                    except:
-                        continue
+            for file in [x for x in os.listdir(path) if x[-4:] == '.mat']:
+                # Loading the file might fail, if so then skip it
+                try:
+                    ekg, feature, diagnosis = load_ekg(path + '/' + file[:-4])
+                    ekg = remove_baseline_wander(ekg)
+                except:
+                    continue
                     
-                    # If the waveform is less than 5000 points, then skip it
-                    if ekg.shape[1] < 5000:
-                        continue
+                # If the waveform is less than 5000 points, then skip it
+                if ekg.shape[1] < 5000:
+                    continue
 
-                    # Append data to corresponding lists
-                    ekgs.append(ekg[:, :5000])
-                    features.append(feature)
-                    diagnoses.append(diagnosis)
+                # Append data to corresponding lists
+                ekgs.append(ekg[:, :5000])
+                features.append(feature)
+                diagnoses.append(diagnosis)
     
     # Format data into np.ndarrays and pd.DataFrames
-    return np.array(ekgs), pd.DataFrame(data=features), pd.DataFrame(data=diagnoses)
+    return np.array(ekgs), DataFrame(data=features), DataFrame(data=diagnoses)
 
 
 def load_ekg(filename: str) -> tuple((np.ndarray, dict[str: None])):
@@ -144,25 +129,11 @@ def load_ekg(filename: str) -> tuple((np.ndarray, dict[str: None])):
             
     return ekg, features, diagnoses
 
-def get_ekg_features(leads: np.ndarray) -> pd.DataFrame:
-    """
-    Takes in an ekg and a list of features and returns them
-    """
-    features = {}
-    HR, RR_var, RR_var_normalized = beat_characteristics(leads, lead_num=1)
-    features['HR'] = HR
-    features['RR_var'] = RR_var
-    for i, lead in enumerate(leads):
-        features['difference' + str(i)] = max(lead) - min(lead) / (1e3)
-        features['area' + str(i)] = np.trapz(lead - min(lead)) / (1e6)
-        
-    return features
-
 def remove_baseline_wander(signal):
     pass
     """
     Removes baseline wander from all leads, takes nd-array as input
-    
+    """
     proc_signal = np.ndarray((0, signal.shape[1]))
     for x in signal:
         ssds = np.zeros((3))
@@ -171,7 +142,7 @@ def remove_baseline_wander(signal):
         iterations = 0
         while True:
             # Decompose 1 level
-            lp, hp = pywt.dwt(cur_lp, "db4")
+            lp, hp = dwt(cur_lp, "db4")
 
             # Shift and calculate the energy of detail/high pass coefficient
             ssds = np.concatenate(([np.sum(hp ** 2)], ssds[:-1]))
@@ -186,35 +157,10 @@ def remove_baseline_wander(signal):
         # Reconstruct the baseline from this level low pass signal up to the original length
         baseline = cur_lp[:]
         for _ in range(iterations):
-            baseline = pywt.idwt(baseline, np.zeros((len(baseline))), "db4")
+            baseline = idwt(baseline, np.zeros((len(baseline))), "db4")
         new = x - baseline[: len(x)]
         proc_signal = np.vstack((proc_signal, new))
     return proc_signal
-    """
-
-def beat_characteristics(ekg, lead_num=1):
-    """
-    RR_var: variance in distance between beats (distance between peaks)
-    HR: Heart Rate
-    """
-    RR_var = 100
-    RR_var_normalized = 100
-    HR = 60
-    try:
-        scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
-    
-        lead = ekg[lead_num][1000:4000]    
-        all_peaks, _ = find_peaks(lead, height=max(lead)/1.4, distance=150)
-
-        intervals = np.diff(all_peaks)
-        intervals_normalized = scaler.fit_transform(np.reshape(intervals,(-1,1)))
-        RR_var = statistics.variance(intervals)
-        RR_var_normalized = statistics.variance(np.reshape(intervals_normalized,(1,len(intervals_normalized)))[0])
-        HR = 30000/statistics.mean(intervals)
-    except:
-        pass
-
-    return HR, RR_var, RR_var_normalized
 
 def is_invalid(ekg):
     for lead_num in range(12):
