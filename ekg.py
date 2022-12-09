@@ -130,7 +130,6 @@ def load_ekg(filename: str) -> tuple((np.ndarray, dict[str: None])):
     return ekg, features, diagnoses
 
 def remove_baseline_wander(signal):
-    pass
     """
     Removes baseline wander from all leads, takes nd-array as input
     """
