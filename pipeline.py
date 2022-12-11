@@ -5,8 +5,8 @@ from features import get_features
 from trees import baseline_tree
 from networks import baseline_network, cnn
 
-# ekgs, features, diagnoses = load_ekgs()
-ekgs, features, diagnoses = load_ekgs_fast()
+ekgs, features, diagnoses = load_ekgs()
+# ekgs, features, diagnoses = load_ekgs_fast()
 features = features.join(diagnoses['ECG: atrial fibrillation'])
 
 # Get equal amount of label=1 and label=0
@@ -47,15 +47,20 @@ for ekg in ekgs:
     ekgs_temp.append(ekg_temp)
 ekgs_with_features = np.array(ekgs_temp)
 
+# Remove NaNs from the dataframe
 features2 = pd.DataFrame(data=features2)
 features_tree = features.join(features2)
 for col in features_tree.columns:
     features_tree[col] = features_tree[col].fillna(features_tree[col].median())
 
+# Remove NaNs from the numpy array
+for i in range(features_tree.shape[1]):
+    ekgs_with_features[:, :, -i] = np.nan_to_num(ekgs_with_features[:, :, -i], np.nanmean(ekgs_with_features[:, :, -i]))
+    ekgs_with_features[:, :, -i] = np.max(ekgs_with_features[:, :, -i].flatten())
 
 print('training decision tree...')
-# baseline_tree(features_tree, 'ECG: atrial fibrillation')
+baseline_tree(features_tree, 'ECG: atrial fibrillation')
 print('training baseline neural network...')
-# baseline_network(features, ekgs_with_features, 'ECG: atrial fibrillation')
+baseline_network(features, ekgs_with_features, 'ECG: atrial fibrillation', lr=0.0001)
 print('training cnn neural network')
-cnn(features, ekgs, 'ECG: atrial fibrillation', lr=1e-6)
+cnn(features, ekgs[:, 1:2, :], 'ECG: atrial fibrillation', lr=1e-6)

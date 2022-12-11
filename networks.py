@@ -36,7 +36,7 @@ def evaluate_model(model, X_test, y_test):
 
     return {'loss': metrics[0], 'acc': metrics[1]}
 
-def baseline_network(data: pd.DataFrame, ekgs: np.ndarray, target: str):
+def baseline_network(data: pd.DataFrame, ekgs: np.ndarray, target: str, lr=0.0001):
     feature_labels = data.columns.copy().tolist()
     feature_labels.remove(target)
 
@@ -55,7 +55,7 @@ def baseline_network(data: pd.DataFrame, ekgs: np.ndarray, target: str):
     ])
 
     model.compile(
-        optimizer = tf.keras.optimizers.Adam(learning_rate=.0001),
+        optimizer = tf.keras.optimizers.Adam(learning_rate=lr),
         loss = 'BinaryCrossentropy',
         metrics = ['acc'],
     )
@@ -79,7 +79,7 @@ def cnn(data: pd.DataFrame, ekgs: np.ndarray, target: str, lr=1e-6):
     X_valid, X_test, y_valid, y_test = train_test_split(X_test, y_test, test_size=0.5)
 
     model = tf.keras.models.Sequential([
-        tf.keras.layers.Conv2D(64, (12, 50), activation='relu', input_shape=(X_train.shape[1], X_train.shape[2], 1)),
+        tf.keras.layers.Conv2D(16, (1, 20), activation='relu', input_shape=(X_train.shape[1], X_train.shape[2], 1)),
         tf.keras.layers.Flatten(),
         tf.keras.layers.Dense(512, activation='relu'),
         tf.keras.layers.Dense(1024, activation='relu'),

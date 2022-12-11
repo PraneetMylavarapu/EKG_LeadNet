@@ -73,7 +73,7 @@ def load_ekgs() -> tuple((np.ndarray, DataFrame, DataFrame)):
                 # Loading the file might fail, if so then skip it
                 try:
                     ekg, feature, diagnosis = load_ekg(path + '/' + file[:-4])
-                    # remove_baseline_wander(ekg)
+                    ekg = bring_ekg_med_to_zero(ekg)
                 except:
                     continue
                     
