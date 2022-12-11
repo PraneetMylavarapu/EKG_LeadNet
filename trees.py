@@ -27,3 +27,5 @@ def baseline_tree(data: pd.DataFrame, target: str):
         cnf_matrix[y, y_hat] += 1
     print(cnf_matrix)
     print("Accuracy:", metrics.accuracy_score(y_test, y_pred))
+
+    return clf

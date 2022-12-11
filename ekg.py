@@ -1,6 +1,7 @@
 import numpy as np
 from pandas import DataFrame
 from scipy.io import loadmat
+from scipy.signal import filtfilt, iirnotch
 from features import beat_characteristics
 import os
 from pywt import dwt, idwt
@@ -71,7 +72,7 @@ def load_ekgs() -> tuple((np.ndarray, DataFrame, DataFrame)):
                 # Loading the file might fail, if so then skip it
                 try:
                     ekg, feature, diagnosis = load_ekg(path + '/' + file[:-4])
-                    ekg = remove_baseline_wander(ekg)
+                    # remove_baseline_wander(ekg)
                 except:
                     continue
                     
@@ -87,6 +88,50 @@ def load_ekgs() -> tuple((np.ndarray, DataFrame, DataFrame)):
     # Format data into np.ndarrays and pd.DataFrames
     return np.array(ekgs), DataFrame(data=features), DataFrame(data=diagnoses)
 
+
+def load_ekgs_fast() -> tuple((np.ndarray, DataFrame, DataFrame)):
+    """
+    Load all ekgs from the trainig folder
+    """
+    # Lists to hold data from each ekg
+    ekgs = []
+    features = []
+    diagnoses = []
+
+    # First set of directories
+    sources = os.listdir('./training')
+    sources.remove('.DS_Store')
+    sources.remove('index.html')
+
+    for source in sources:
+        # Second set of directories
+        print('getting data from:', source)
+        gs = os.listdir('./training/' + source)
+        gs.remove('index.html')
+        for g in gs:
+            # ekg files
+            path = './training/' + source + '/' + g
+            for file in [x for x in os.listdir(path) if x[-4:] == '.mat']:
+                # Loading the file might fail, if so then skip it
+                try:
+                    ekg, feature, diagnosis = load_ekg(path + '/' + file[:-4])
+                    # remove_baseline_wander(ekg)
+                except:
+                    continue
+                    
+                # If the waveform is less than 5000 points, then skip it
+                if ekg.shape[1] < 5000:
+                    continue
+
+                # Append data to corresponding lists
+                ekgs.append(ekg[:, :5000])
+                features.append(feature)
+                diagnoses.append(diagnosis)
+            break
+        break
+    
+    # Format data into np.ndarrays and pd.DataFrames
+    return np.array(ekgs), DataFrame(data=features), DataFrame(data=diagnoses)
 
 def load_ekg(filename: str) -> tuple((np.ndarray, dict[str: None])):
     """
@@ -129,7 +174,18 @@ def load_ekg(filename: str) -> tuple((np.ndarray, dict[str: None])):
             
     return ekg, features, diagnoses
 
-def remove_baseline_wander(signal):
+def remove_baseline_wander(ekg, fs=500):
+    """
+    Removes baseline wandering from each lead
+    """
+    for i, e in enumerate(ekg):
+        b, a = iirnotch(0.05 , Q=0.005, fs=fs)
+        filtered_ecg = filtfilt(b, a, e)
+        median = np.median(filtered_ecg)
+        filtered_ecg = filtered_ecg-median
+        ekg[i] = filtered_ecg
+
+def remove_baseline_wander_old(signal):
     """
     Removes baseline wander from all leads, takes nd-array as input
     """
