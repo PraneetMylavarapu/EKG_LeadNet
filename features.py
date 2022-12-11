@@ -1,5 +1,5 @@
 from sklearn import preprocessing
-from scipy.signal import find_peaks,filtfilt, iirnotch
+from scipy.signal import find_peaks
 from scipy.stats import median_abs_deviation
 import statistics
 import numpy as np
@@ -65,98 +65,120 @@ def beat_characteristics(ekg, lead_num=1):
 
     return HR, RR_var, RR_var_normalized
 
-def filter_peaks(peaks:np.ndarray, peak_indices:np.ndarray, window:int, inverted:bool=False) -> np.ndarray:
-    if inverted:
-        peaks = -1*peaks
-    true_peak_indices = []
-    i = 0
-    while i<len(peak_indices):
-        cluster = [[peaks[i], peak_indices[i]]]
-        if i<len(peak_indices)-1:
-            while peak_indices[i+1]-peak_indices[i] < window:
-                cluster.append([peaks[i+1], peak_indices[i+1]])
-                i = i+1
-                if i == len(peak_indices)-1:
-                    break
-        true_peak_indices.append(max(cluster)[1])
-        i = i+1
-    true_peak_indices = np.array(true_peak_indices)
-    return true_peak_indices
+def reject_outliers(data:np.ndarray, m:float = 3.):
+    """
+    Filters statistically extraordinary intervals between peaks 
 
-def _find_peaks(ecg:np.ndarray, min_height:float, max_height:float=None, inverted:bool=False) -> np.ndarray:
-    sign = 1
-    if inverted:
-        sign = -1
-    if max_height:
-        height = (sign*min_height, sign*max_height)
-    else:
-        height = sign*min_height
-    peak_indices, _ = find_peaks(sign*ecg, height=height)
-    return peak_indices
+    params:
+    data: np.ndarray of intervals (QRS, RR, etc)
+    m: number of mdevs to keep
 
-def reject_outliers(data, m = 2.):
+    returns:
+    data: np.ndarray of statistically relevant intervals
+    """
     d = np.abs(data - np.median(data))
     mdev = np.median(d)
     s = d/mdev if mdev else 0.
+
     return data[s<m]
 
-def get_QRS(ekg, factor=5, margin=100, fs=500):
-    b, a = iirnotch(0.05 , Q=0.005, fs=fs)
-    bw_fixed_ecg = filtfilt(b, a, ekg[1])
-    median = np.median(bw_fixed_ecg)
-    bw_fixed_ecg = bw_fixed_ecg-median
+def get_R_indices(ekg:np.ndarray, lead_num:int=2, R_factor:float=5., distance:int=100):
+    """
+    Gets the indices of R peaks in a single lead 
+    
+    params:
+    ekg: np.ndarray of a single lead
+    lead_num: lead number
+    R_factor: multiplier to the mdev of ekg to provide minimum height of the R peak
+    distance: minimum distance between peaks
 
-    # median absolute deviation (kind of like standard deviation but from the median rather than the mean)
-    mad = median_abs_deviation(bw_fixed_ecg)
+    returns:
+    R_indices: np.ndarray of indices of R peaks
+    """
+    mad = median_abs_deviation(ekg[lead_num])
+    R_indices, _ = find_peaks(ekg[lead_num], height=R_factor*mad, distance=distance)
 
-    # find Rs
-    R_indices, _ = find_peaks(bw_fixed_ecg, height=factor*mad)
-    Rs = bw_fixed_ecg[R_indices]
+    return R_indices
 
-    # fitler Rs
-    window = 20
-    true_R_indices = []
-    i = 0
-    while i<len(R_indices):
-        cluster = [[Rs[i], R_indices[i]]]
-        if i<len(R_indices)-1:
-            while R_indices[i+1]-R_indices[i] < window:
-                cluster.append([Rs[i+1], R_indices[i+1]])
-                i = i+1
-                if i == len(R_indices)-1:
-                    break
-        true_R_indices.append(max(cluster)[1])
-        i = i+1
-    true_R_indices = np.array(true_R_indices)
+def get_avg_RR_interval(ekg:np.ndarray, lead_num:int=2, R_factor:float=5., distance:int=100, significane:float=3.):
+    """
+    Gets the average RR interval in a single lead
+    
+    params:
+    ekg: np.ndarray of a single lead
+    lead_num: lead number
+    R_factor: multiplier to the mdev of ekg to provide minimum height of the R peak
+    distance: minimum distance between peaks
+    significane: number of mdevs to keep
 
-    # deciding the cutoff for S
-    S_factor = 4
-    S_cutoff = -S_factor*mad
+    returns:
+    avg_rr_interval: average RR interval
+    """
+    R_indices = get_R_indices(ekg, lead_num, R_factor, distance)
+    rr_intervals = []
+    for i in range(len(R_indices)-1):
+        rr_intervals.append(R_indices[i+1] - R_indices[i])
+    rr_intervals = np.array(rr_intervals)
+    rr_intervals = reject_outliers(rr_intervals, significane)
+    avg_rr_interval = np.mean(rr_intervals)
 
-    cut_ecg = bw_fixed_ecg[true_R_indices[1]+margin:true_R_indices[-2]-margin]
+    return avg_rr_interval
 
-    # finding and filtering Ss
-    S_indices = _find_peaks(cut_ecg, min_height=S_cutoff, inverted=True)
-    Ss = cut_ecg[S_indices]
-    true_S_indices = filter_peaks(Ss, S_indices, window=100, inverted=True)
+def get_QS_indices(ekg:np.ndarray, lead_num:int=2, window_factor:float=4., R_factor:float=5., distance:int=100):
+    """
+    Gets the indices of Q and S peaks in a single lead 
+    
+    params:
+    ekg: np.ndarray of a single lead
+    lead_num: lead number
+    window_factor: how much % of the average RR interval to look around the R peak
+    R_factor: multiplier to the mdev of ekg to provide minimum height of the R peak
+    distance: minimum distance between peaks
 
-    # deciding the cutoff for Q
-    Q_factor = 4
-    Q_cutoff = -Q_factor*mad
+    returns:
+    Q_indices: np.ndarray of indices of Q peaks
+    S_indices: np.ndarray of indices of Q peaks
+    """
+    R_indices = get_R_indices(ekg, lead_num, R_factor, distance)
+    avg_rr_interval = get_avg_RR_interval(ekg, lead_num, R_factor, distance)
+    S_indices = []
+    Q_indices = []
+    for i in range(1, len(R_indices)-1):
+        window = int(avg_rr_interval/window_factor)
+        lhs = ekg[lead_num][R_indices[i]-window:R_indices[i]]
+        rhs = ekg[lead_num][R_indices[i]:R_indices[i]+window]
+        potential_Q_indices, _ = find_peaks(-lhs)
+        Q_index = R_indices[i]-window+potential_Q_indices[np.argmax(-lhs[potential_Q_indices])]
+        Q_indices.append(Q_index)
+        potential_S_indices, _ = find_peaks(-rhs)
+        S_index = R_indices[i]+potential_S_indices[np.argmax(-rhs[potential_S_indices])]
+        S_indices.append(S_index)
 
-    # finding and filtering Qs
-    Q_indices = _find_peaks(cut_ecg, min_height=Q_cutoff, max_height=S_cutoff, inverted=True)
-    Qs = cut_ecg[Q_indices]
-    true_Q_indices = filter_peaks(Qs, Q_indices, window=50, inverted=True)
+    return Q_indices, S_indices
 
-    # average QRS interval
+def get_avg_qrs_interval(ekg:np.ndarray, lead_num:int=2, window_factor:float=4., R_factor:float=5., distance:int=100, significance:float=3.):
+    """
+    Gets the average QRS interval in a single lead 
+    
+    params:
+    ekg: np.ndarray of a single lead
+    lead_num: lead number
+    window_factor: how much % of the average RR interval to look around the R peak
+    R_factor: multiplier to the mdev of ekg to provide minimum height of the R peak
+    distance: minimum distance between peaks
+    significane: number of mdevs to keep
+
+    returns:
+    avg_qrs_interval: average QRS interval
+    """
+    Q_indices, S_indices = get_QS_indices(ekg, lead_num, window_factor, R_factor, distance)
 
     # find first zero crossing before Q index
     Q_zero_crossings = []
-    for Q_index in true_Q_indices:
+    for Q_index in Q_indices:
         i = Q_index
         flag = 1
-        while cut_ecg[i] < 0:
+        while ekg[lead_num][i] < 0:
             i = i - 1
             if i < 0:
                 flag = 0
@@ -167,19 +189,25 @@ def get_QRS(ekg, factor=5, margin=100, fs=500):
 
     # find first zero crossing after S index
     S_zero_crossings = []
-    for S_index in true_S_indices:
+    for S_index in S_indices:
         i = S_index
         flag = 1
-        while cut_ecg[i] < 0:
+        while ekg[lead_num][i] < 0:
             i = i + 1
-            if i > len(cut_ecg)-2:
+            if i > len(ekg[lead_num])-2:
                 flag = 0
                 break
         if flag:
             S_zero_crossings.append(i)
     S_zero_crossings = np.array(S_zero_crossings)
 
-    # average QRS interval
     qrs_intervals = S_zero_crossings - Q_zero_crossings
-    qrs_intervals = reject_outliers(qrs_intervals, 3)
+    qrs_intervals = reject_outliers(qrs_intervals, significance)
     avg_qrs_interval = np.mean(qrs_intervals)
+
+    # QRS_var = statistics.variance(qrs_intervals)
+
+    return avg_qrs_interval
+
+
+

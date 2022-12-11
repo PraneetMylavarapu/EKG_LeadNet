@@ -5,6 +5,7 @@ from scipy.signal import filtfilt, iirnotch
 from features import beat_characteristics
 import os
 from pywt import dwt, idwt
+from scipy.signal import iirnotch, filtfilt
 
 
 # Dictionary that maps a diagnosis code to the diagnosis name
@@ -223,3 +224,18 @@ def is_invalid(ekg):
         if RR_var > 100000:
             return True
     return False
+
+def remove_baseline_wander1(ekg, fs, cutoff=0.05, Q=0.005):
+    """
+    remove baseline wander from a single lead
+    """
+    b, a = iirnotch(cutoff , Q = Q, fs = fs)
+    ekg = filtfilt(b, a, ekg)
+    return ekg
+
+def bring_ekg_med_to_zero(ekg):
+    """
+    bring the median of a single lead to zero
+    """
+    ekg = ekg - np.median(ekg)
+    return ekg
