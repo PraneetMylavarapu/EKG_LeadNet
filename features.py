@@ -5,16 +5,24 @@ import statistics
 import numpy as np
 import pandas as pd
 
+
 def get_features(ekg: np.ndarray, leads=[i for i in range(12)]) -> pd.DataFrame:
     """
     Takes in an ekg and a list of features and returns them
     """
     features = {}
     HR, RR_var, RR_var_normalized = beat_characteristics(leads, lead_num=1)
+    avg_QRS_interval = None
+    try:
+        avg_QRS_interval = get_avg_qrs_interval(ekg)
+    except:
+        print('QRS failed')
+        avg_QRS_interval = np.nan
 
     # Features that are independent of lead
     features['HR'] = HR
     features['RR_var'] = RR_var
+    features['avg_QRS_interval'] = avg_QRS_interval / 200
 
     # Features that are calculated per lead
     for i in leads:
@@ -81,7 +89,7 @@ def reject_outliers(data:np.ndarray, m:float = 3.):
 
     return data[s<m]
 
-def get_R_indices(ekg:np.ndarray, lead_num:int=2, R_factor:float=5., distance:int=100):
+def get_R_indices(ekg:np.ndarray, lead_num:int=1, R_factor:float=5., distance:int=100):
     """
     Gets the indices of R peaks in a single lead 
     
@@ -99,7 +107,7 @@ def get_R_indices(ekg:np.ndarray, lead_num:int=2, R_factor:float=5., distance:in
 
     return R_indices
 
-def get_avg_RR_interval(ekg:np.ndarray, lead_num:int=2, R_factor:float=5., distance:int=100, significane:float=3.):
+def get_avg_RR_interval(ekg:np.ndarray, lead_num:int=1, R_factor:float=5., distance:int=100, significane:float=3.):
     """
     Gets the average RR interval in a single lead
     
@@ -123,7 +131,7 @@ def get_avg_RR_interval(ekg:np.ndarray, lead_num:int=2, R_factor:float=5., dista
 
     return avg_rr_interval
 
-def get_QS_indices(ekg:np.ndarray, lead_num:int=2, window_factor:float=4., R_factor:float=5., distance:int=100):
+def get_QS_indices(ekg:np.ndarray, lead_num:int=1, window_factor:float=4., R_factor:float=5., distance:int=100):
     """
     Gets the indices of Q and S peaks in a single lead 
     
@@ -155,7 +163,7 @@ def get_QS_indices(ekg:np.ndarray, lead_num:int=2, window_factor:float=4., R_fac
 
     return Q_indices, S_indices
 
-def get_avg_qrs_interval(ekg:np.ndarray, lead_num:int=2, window_factor:float=4., R_factor:float=5., distance:int=100, significance:float=3.):
+def get_avg_qrs_interval(ekg:np.ndarray, lead_num:int=1, window_factor:float=4., R_factor:float=5., distance:int=100, significance:float=3.):
     """
     Gets the average QRS interval in a single lead 
     
