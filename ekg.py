@@ -7,6 +7,7 @@ import os
 from pywt import dwt, idwt
 from scipy.signal import iirnotch, filtfilt
 from globals import *
+from itertools import groupby
 
 
 # Dictionary that maps a diagnosis code to the diagnosis name
@@ -188,7 +189,8 @@ def too_much_wander(ekg, drift_allowed=0.05, threshold=8):
     Detects too much wander
     """
     global_max = np.max(ekg)
-    if (ekg > global_max * (1 - PEAK_DRIFT_THRESHOLD)).sum() < NUM_QRS_PEAKS_THRESHOLD:
+    peaks = ekg > global_max * (1 - PEAK_DRIFT_THRESHOLD)
+    if sum([k for k, _ in groupby(peaks)]) < NUM_QRS_PEAKS_THRESHOLD:
         return True
     return False
 

@@ -4,7 +4,7 @@ from scipy.stats import median_abs_deviation
 import statistics
 import numpy as np
 import pandas as pd
-
+from globals import *
 
 def get_features(ekg: np.ndarray, leads=[i for i in range(12)]) -> pd.DataFrame:
     """
@@ -12,23 +12,28 @@ def get_features(ekg: np.ndarray, leads=[i for i in range(12)]) -> pd.DataFrame:
     """
     features = {}
     HR, RR_var, RR_var_normalized = beat_characteristics(leads, lead_num=1)
-    avg_QRS_interval = None
+    QRS_interval = None
+    QRS_area = None
     try:
-        avg_QRS_interval = get_avg_qrs_interval(ekg)
+        # avg_QRS_interval = get_avg_qrs_interval(ekg)
+        QRS_interval, QRS_area = get_QRS_interval(ekg[1])
     except:
         print('QRS failed')
-        avg_QRS_interval = np.nan
+        # QRS_interval, QRS_area = get_QRS_interval(ekg[1])
+        QRS_interval = np.nan
+        QRS_area = np.nan
 
     # Features that are independent of lead
     features['HR'] = HR
     features['RR_var'] = RR_var
-    features['avg_QRS_interval'] = avg_QRS_interval / 200
+    features['QRS_interval'] = QRS_interval
+    features['QRS_area'] = QRS_area
 
     # Features that are calculated per lead
     for i in leads:
         lead = ekg[i]
-        features['difference' + str(i)] = max_peak_height(lead)
-        features['area' + str(i)] = lead_area(lead)
+        features['difference' + str(i)] = max_peak_height(lead) * 0.001
+        features['area' + str(i)] = lead_area(lead) * 0.001
         
     return features
 
@@ -217,4 +222,49 @@ def get_avg_qrs_interval(ekg:np.ndarray, lead_num:int=1, window_factor:float=4.,
     return avg_qrs_interval
 
 
+def get_QRS_interval(ekg):
+    global_max = np.max(ekg)
+    look_ahead = 3
+    
+    # Find first QRS peak
+    i = 0
+    bucket = []
+    while ekg[i] < global_max * (1 - PEAK_DRIFT_THRESHOLD):
+        i += 1
+    while ekg[i] > global_max * (1 - PEAK_DRIFT_THRESHOLD):
+        bucket.append((ekg[i], i))
+        i += 1
+    first_peak = max(bucket)[1]
+
+    # Go to the bottom of the first QRS peak
+    i = first_peak
+    while ekg[i] > ekg[i-look_ahead]:
+        i -= 1
+    
+    # Go to the baseline
+    while ekg[i-look_ahead] > ekg[i]:
+        i -= 1
+    
+    # Left endpoint
+    left = max(0, i)
+
+    # Go to the bottom of the first QRS peak
+    i = first_peak
+    while ekg[i] > ekg[i+look_ahead]:
+        i += 1
+    
+    # Go to the baseline
+    while ekg[i+look_ahead] > ekg[i]:
+        i += 1
+    
+    # Right endpoint
+    right = i
+
+    # QRS interval in ms
+    interval = (right - left) * 0.001
+    
+    # QRS area under curve
+    area = np.trapz(ekg[left:right] - np.min(ekg[left:right])) * 0.001
+    
+    return interval, area
 
