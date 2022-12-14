@@ -216,3 +216,72 @@ def bring_ekg_med_to_zero(ekg):
     """
     ekg = ekg - np.median(ekg)
     return ekg
+
+def downsample(ekg, num_points=100):
+    new_ekg = []
+    sample_window = ekg.shape[0] // num_points
+    goal_step_size = (ekg.shape[0]-sample_window) / num_points
+    extrema_window_size = 5 * sample_window
+    window_lefts = [0]
+    current_sum = 0
+    for i in range(1, num_points):
+        if current_sum / i < goal_step_size:
+            window_lefts.append(window_lefts[-1] + sample_window+1)
+            current_sum += sample_window+1
+        else:
+            window_lefts.append(window_lefts[-1] + sample_window)
+            current_sum += sample_window
+        
+    for i in window_lefts:
+        left_extrema_window = max(0, i-extrema_window_size//2)
+        right_extrema_window = min(i+extrema_window_size//2, ekg.shape[0]-1)
+        extrema_window = ekg[left_extrema_window:right_extrema_window+1]
+        max_extrema_window = np.argmax(extrema_window) + left_extrema_window
+        min_extrema_window = np.argmin(extrema_window) + left_extrema_window
+        if i <= max_extrema_window < i+sample_window:
+            new_ekg.append(ekg[i])
+        elif i <= min_extrema_window < i+sample_window:
+            new_ekg.append(ekg[i])
+        else:
+            new_ekg.append(np.average(ekg[i:i+sample_window]))
+    return np.array(new_ekg)
+
+def one_interval(ekg, downsample=True):
+    global_max = np.max(ekg)
+    
+    # Find first QRS peak
+    i = 0
+    bucket = []
+    while ekg[i] < global_max * (1 - PEAK_DRIFT_THRESHOLD):
+        i += 1
+    while ekg[i] > global_max * (1 - PEAK_DRIFT_THRESHOLD):
+        bucket.append((ekg[i], i))
+        i += 1
+    first_peak = max(bucket)[1]
+
+    # Find second QRS peak
+    i += 10
+    bucket = []
+    while ekg[i] < global_max * (1 - PEAK_DRIFT_THRESHOLD):
+        i += 1
+    while ekg[i] > global_max * (1 - PEAK_DRIFT_THRESHOLD):
+        bucket.append((ekg[i], i))
+        i += 1
+    second_peak = max(bucket)[1]
+
+    # Distance between the two peaks
+    window_size = second_peak - first_peak
+
+    # Go to the bottom of the first QRS peak
+    look_ahead = 3
+    i = first_peak
+    while ekg[i] > ekg[i-look_ahead]:
+        i -= 1
+    
+    # Go to the baseline
+    baseline = np.median(ekg)
+    while ekg[i] < baseline:
+        i -= 1
+    
+    # get the minimum value between i and i+look_ahead
+    return ekg[i:i+window_size+1]
