@@ -2,8 +2,9 @@ import pandas as pd
 import numpy as np
 from ekg import load_ekgs, load_ekgs_fast
 from features import get_features
-from trees import baseline_tree
-from networks import baseline_network, cnn
+from trees import baseline_tree, short_tree, log_loss_tree, entropy_tree, big_forest
+from globals import *
+# from networks import baseline_network, cnn
 
 ekgs, features, diagnoses = load_ekgs()
 # ekgs, features, diagnoses = load_ekgs_fast()
@@ -58,9 +59,17 @@ for i in range(features_tree.shape[1]):
     ekgs_with_features[:, :, -i] = np.nan_to_num(ekgs_with_features[:, :, -i], np.nanmean(ekgs_with_features[:, :, -i]))
     ekgs_with_features[:, :, -i] = np.max(ekgs_with_features[:, :, -i].flatten())
 
-print('training decision tree...')
+print('training baseline decision tree...')
 baseline_tree(features_tree, 'ECG: atrial fibrillation')
-print('training baseline neural network...')
-baseline_network(features, ekgs_with_features, 'ECG: atrial fibrillation', lr=0.0001)
-print('training cnn neural network')
-cnn(features, ekgs[:, 1:2, :], 'ECG: atrial fibrillation', lr=1e-6)
+print('\ntraining short decision tree...')
+short_tree(features_tree, 'ECG: atrial fibrillation')
+print('\ntraining big forest...')
+big_forest(features_tree, 'ECG: atrial fibrillation')
+print('\ntraining entropy decision tree...')
+entropy_tree(features_tree, 'ECG: atrial fibrillation')
+print('\ntraining log_loss decision tree...')
+log_loss_tree(features_tree, 'ECG: atrial fibrillation')
+# print('training baseline neural network...')
+# baseline_network(features, ekgs_with_features, 'ECG: atrial fibrillation', lr=0.0001)
+# print('training cnn neural network')
+# cnn(features, ekgs[:, 1:2, :], 'ECG: atrial fibrillation', lr=1e-6)
