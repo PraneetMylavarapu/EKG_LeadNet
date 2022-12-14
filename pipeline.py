@@ -62,6 +62,7 @@ for i in range(features_tree.shape[1]):
 
 print('\nrows of data:', features_tree.shape[0])
 
+# Train different models
 print('\ntraining baseline decision tree...')
 baseline_tree(features_tree, 'ECG: atrial fibrillation', num_iterations=10)
 print('\ntraining short decision tree...')
