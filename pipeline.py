@@ -45,8 +45,11 @@ print('columns of data:', features_tree.shape[1])
 # log_loss_tree(features_tree, 'ECG: atrial fibrillation', num_iterations=10)
 
 # Train networks
-# print('training baseline ekg neural network...')
-# baseline_feature_network(down_sampled_ekgs_with_features[:, :34], features_tree['ECG: atrial fibrillation'].to_numpy(), lr=10e-6)
-# baseline_network(down_sampled_ekgs_with_features, features_tree['ECG: atrial fibrillation'].to_numpy(), lr=0.001)
+# print('training baseline feature neural network...')
+# baseline_network(down_sampled_ekgs_with_features[:, :34], features_tree['ECG: atrial fibrillation'].to_numpy(), lr=500e-6)
+
+print('training baseline feature neural network...')
+baseline_network(down_sampled_ekgs_with_features, features_tree['ECG: atrial fibrillation'].to_numpy(), lr=1e-3)
+
 # print('training cnn neural network')
 # cnn(features, ekgs[:, 1, :], 'ECG: atrial fibrillation', lr=5e-6)

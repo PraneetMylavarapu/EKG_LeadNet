@@ -41,9 +41,14 @@ def baseline_network(ekgs: np.ndarray, target: str, lr=0.0001):
     # Split to train and test
     X_train, X_test, y_train, y_test = train_test_split(ekgs, target, test_size=0.4)
     X_valid, X_test, y_valid, y_test = train_test_split(X_test, y_test, test_size=0.5)
+
+    r_method = 'l1'
+
     model = tf.keras.models.Sequential([
-        tf.keras.layers.Dense(20, activation='relu'),
-        tf.keras.layers.Dense(50, activation='relu'),
+        tf.keras.layers.Dense(1024, activation='relu', kernel_regularizer=r_method),
+        tf.keras.layers.Dense(2048, activation='relu', kernel_regularizer=r_method),
+        tf.keras.layers.Dropout(0.50),
+        tf.keras.layers.Dense(64),
         tf.keras.layers.Dense(1, activation='sigmoid')
     ])
 
@@ -56,7 +61,7 @@ def baseline_network(ekgs: np.ndarray, target: str, lr=0.0001):
     history = model.fit(
         X_train, 
         y_train, 
-        epochs=500,
+        epochs=300,
         validation_data=(X_valid, y_valid),
     )
 
