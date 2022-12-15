@@ -2,9 +2,9 @@ import pandas as pd
 import numpy as np
 from ekg import load_ekgs, downsample
 from features import get_features
-from trees import baseline_tree, short_tree, log_loss_tree, entropy_tree, big_forest, big_forest_small_tree
+from trees import *
 from globals import *
-from networks import baseline_feature_network, cnn
+from networks import *
 
 ekgs, features, diagnoses = load_ekgs()
 features = features.join(diagnoses['ECG: atrial fibrillation'])
@@ -89,8 +89,6 @@ print('columns of data:', features_tree.shape[1])
 # log_loss_tree(features_tree, 'ECG: atrial fibrillation', num_iterations=10)
 
 # Train networks
-# print('training baseline feature neural network...')
-# baseline_feature_network(features_tree[[col for col in features_tree.columns if col != 'ECG: atrial fibrillation']].to_numpy(), features_tree['ECG: atrial fibrillation'].to_numpy(), lr=10e-6)
 print('training baseline ekg neural network...')
 baseline_feature_network(down_sampled_ekgs_with_features[:, :34], features_tree['ECG: atrial fibrillation'].to_numpy(), lr=10e-6)
 
