@@ -93,52 +93,6 @@ def load_ekgs() -> tuple((np.ndarray, DataFrame, DataFrame)):
     # Format data into np.ndarrays and pd.DataFrames
     return np.array(ekgs), DataFrame(data=features), DataFrame(data=diagnoses)
 
-
-def load_ekgs_fast() -> tuple((np.ndarray, DataFrame, DataFrame)):
-    """
-    Load all ekgs from the trainig folder
-    """
-    # Lists to hold data from each ekg
-    ekgs = []
-    features = []
-    diagnoses = []
-
-    # First set of directories
-    sources = os.listdir('./training')
-    sources.remove('.DS_Store')
-    sources.remove('index.html')
-
-    for source in sources:
-        # Second set of directories
-        print('getting data from:', source)
-        gs = os.listdir('./training/' + source)
-        gs.remove('index.html')
-        for g in gs:
-            # ekg files
-            path = './training/' + source + '/' + g
-            for file in [x for x in os.listdir(path) if x[-4:] == '.mat']:
-                # Loading the file might fail, if so then skip it
-                try:
-                    ekg, feature, diagnosis, err = load_ekg(path + '/' + file[:-4])
-                    if err:
-                        continue
-                except:
-                    continue
-                    
-                # If the waveform is less than 5000 points, then skip it
-                if ekg.shape[1] < 5000:
-                    continue
-
-                # Append data to corresponding lists
-                ekgs.append(ekg[:, :5000])
-                features.append(feature)
-                diagnoses.append(diagnosis)
-            break
-        break
-    
-    # Format data into np.ndarrays and pd.DataFrames
-    return np.array(ekgs), DataFrame(data=features), DataFrame(data=diagnoses)
-
 def load_ekg(filename: str) -> tuple((np.ndarray, dict[str: None])):
     """
     The data from an ekg
