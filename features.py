@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from globals import *
 
-def get_features(ekg: np.ndarray, leads=[i for i in range(12)]) -> pd.DataFrame:
+def _get_features(ekg: np.ndarray, leads=[i for i in range(12)]) -> pd.DataFrame:
     """
     Takes in an ekg and a list of features and returns them
     """
@@ -42,6 +42,53 @@ def get_features(ekg: np.ndarray, leads=[i for i in range(12)]) -> pd.DataFrame:
         features['area' + str(i)] = lead_area(lead) * 0.001
         
     return features
+
+def get_features(ekgs, features):
+    features2 = []
+    features_temp = []
+    for ekg in ekgs:
+        fs = _get_features(ekg)
+        
+        # Add the features to the decision tree data
+        features2.append(fs)
+
+        # Insert the features to the ekg of the ekg array so they can be
+        # used to train the neural network
+        f = np.array(list(fs.values()))
+        row = np.zeros((len(f), ))
+        row[:] = f
+        features_temp.append(row)
+    features_array = np.array(features_temp)
+
+    # Replace NaNs from the dataframe array with mean
+    features2 = pd.DataFrame(data=features2)
+    features_tree = features.join(features2)
+    features_tree = features_tree.dropna()
+    # for col in features_tree.columns:
+        # features_tree[col] = features_tree[col].fillna(features_tree[col].median())
+    features_tree.drop('index', axis=1)
+    return features_array, features_tree
+
+def balance_data(features, ekgs):
+    # Get equal amount of label=1 and label=0
+    features1 = features[features['ECG: atrial fibrillation'] == 1]
+    n = len(features1)
+    features0 = features[features['ECG: atrial fibrillation'] == 0]
+    features0 = features0.sample(n=n)
+
+    # Get corresponding ekg waveforms
+    ekgs_temp = []
+    for i in features0.index.values.tolist():
+        ekgs_temp.append(ekgs[i])
+    for i in features1.index.values.tolist():
+        ekgs_temp.append(ekgs[i])
+
+    # Finalize variables
+    ekgs = np.array(ekgs_temp)
+    features = pd.concat([features0, features1])
+    features = features.reset_index()
+    
+    return features, ekgs
 
 """
 ----------------------------------------------------------------------------

@@ -138,7 +138,7 @@ def load_ekg(filename: str) -> tuple((np.ndarray, dict[str: None])):
             
     return ekg, features, diagnoses, None
 
-def too_much_wander(ekg, drift_allowed=0.05, threshold=8):
+def too_much_wander(ekg):
     """
     Detects too much wander
     """
@@ -173,7 +173,15 @@ def bring_ekg_med_to_zero(ekg):
     ekg = ekg - np.median(ekg)
     return ekg
 
-def downsample(ekg, num_points=100):
+def downsample(ekgs, num_points=100, lead_index=1):
+    down_sampled_ekgs = []
+    for ekg in ekgs:
+        down_sampled_lead = _downsample(ekg[lead_index])
+        down_sampled_ekgs.append(down_sampled_lead)
+    down_sampled_ekgs = np.array(down_sampled_ekgs) / 1000
+    return down_sampled_ekgs
+
+def _downsample(ekg, num_points=100):
     new_ekg = []
     sample_window = ekg.shape[0] // num_points
     goal_step_size = (ekg.shape[0]-sample_window) / num_points
@@ -201,6 +209,17 @@ def downsample(ekg, num_points=100):
         else:
             new_ekg.append(np.average(ekg[i:i+sample_window]))
     return np.array(new_ekg)
+
+def merge_ekgs_features(ekgs, features_array, features_tree):
+    down_sampled_ekgs_with_features = []
+    for i in features_tree.index.values.tolist():
+        row = np.zeros((2 + ekgs.shape[1] + features_array.shape[1], ))
+        row[2:2+features_array.shape[1]] = features_array[i]
+        row[-ekgs.shape[1]:] = ekgs[i]
+        down_sampled_ekgs_with_features.append(row)
+    down_sampled_ekgs_with_features = np.array(down_sampled_ekgs_with_features)
+    down_sampled_ekgs_with_features[:, :2] = features_tree[['Age', 'Sex']].to_numpy()
+    return down_sampled_ekgs_with_features
 
 def one_interval(ekg, downsample=True):
     global_max = np.max(ekg)

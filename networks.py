@@ -36,7 +36,7 @@ def evaluate_model(model, X_test, y_test):
 
     return {'loss': metrics[0], 'acc': metrics[1]}
 
-def baseline_feature_network(ekgs: np.ndarray, target: str, lr=0.0001):
+def baseline_network(ekgs: np.ndarray, target: str, lr=0.0001):
 
     # Split to train and test
     X_train, X_test, y_train, y_test = train_test_split(ekgs, target, test_size=0.4)
