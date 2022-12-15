@@ -67,18 +67,33 @@ def cnn(data: pd.DataFrame, ekgs: np.ndarray, target: str, lr=1e-6):
     # Get labels
     y = data[target]
 
+    # Reshape the data
+    input_data = np.expand_dims(ekgs, axis=-1)
+
     # Split to train and test
-    X_train, X_test, y_train, y_test = train_test_split(ekgs, y, test_size=0.4)
+    X_train, X_test, y_train, y_test = train_test_split(input_data, y, test_size=0.4)
     X_valid, X_test, y_valid, y_test = train_test_split(X_test, y_test, test_size=0.5)
+    
+    r_method = 'l2'
 
     model = tf.keras.models.Sequential([
-        tf.keras.layers.Conv2D(16, (1, 20), activation='relu', input_shape=(X_train.shape[1], X_train.shape[2], 1)),
+        tf.keras.layers.Conv1D(filters=16, kernel_size=10, activation='relu', kernel_regularizer=r_method, input_shape=(X_train.shape[1], 1)),
+        tf.keras.layers.MaxPooling1D(pool_size=10, padding='same'),
+        tf.keras.layers.Conv1D(filters=32, kernel_size=10, activation='relu', padding='same', kernel_regularizer=r_method),
+        tf.keras.layers.MaxPooling1D(pool_size=10, padding='same'),
+        tf.keras.layers.Conv1D(filters=64, kernel_size=10, activation='relu', padding='same', kernel_regularizer=r_method),
+        tf.keras.layers.MaxPooling1D(pool_size=10, padding='same'),
+        tf.keras.layers.Dropout(0.4),
         tf.keras.layers.Flatten(),
-        tf.keras.layers.Dense(512, activation='relu'),
-        tf.keras.layers.Dense(1024, activation='relu'),
-        tf.keras.layers.Dense(2048, activation='relu'),
-        tf.keras.layers.Dense(1, activation='sigmoid')
+        tf.keras.layers.Dense(256, activation='relu', kernel_regularizer=r_method),
+        tf.keras.layers.Dense(512, activation='relu', kernel_regularizer=r_method),
+        tf.keras.layers.Dense(1024, activation='relu', kernel_regularizer=r_method),
+        tf.keras.layers.Dense(1, activation='sigmoid'),
     ])
+
+
+    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
 
     model.compile(
         optimizer = tf.keras.optimizers.Adam(learning_rate=lr),
@@ -89,7 +104,7 @@ def cnn(data: pd.DataFrame, ekgs: np.ndarray, target: str, lr=1e-6):
     history = model.fit(
     X_train, 
     y_train, 
-    epochs=10,
+    epochs=1500,
     validation_data=(X_valid, y_valid),
     )
 
