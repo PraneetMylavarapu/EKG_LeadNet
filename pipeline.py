@@ -1,13 +1,12 @@
 import pandas as pd
 import numpy as np
-from ekg import load_ekgs, load_ekgs_fast
+from ekg import load_ekgs
 from features import get_features
 from trees import baseline_tree, short_tree, log_loss_tree, entropy_tree, big_forest, big_forest_small_tree
 from globals import *
 # from networks import baseline_network, cnn
 
 ekgs, features, diagnoses = load_ekgs()
-# ekgs, features, diagnoses = load_ekgs_fast()
 features = features.join(diagnoses['ECG: atrial fibrillation'])
 
 # Get equal amount of label=1 and label=0

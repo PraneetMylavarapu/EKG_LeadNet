@@ -14,20 +14,26 @@ def get_features(ekg: np.ndarray, leads=[i for i in range(12)]) -> pd.DataFrame:
     HR, RR_var, RR_var_normalized = beat_characteristics(leads, lead_num=1)
     QRS_interval = None
     QRS_area = None
+    DAVID_interval = None
+    DAVID_area = None
+    ekg_features = {}
     try:
         # avg_QRS_interval = get_avg_qrs_interval(ekg)
-        QRS_interval, QRS_area = get_QRS_interval(ekg[1])
+        ekg_features = get_QRS_interval(ekg[1])
     except:
         print('QRS failed')
-        # QRS_interval, QRS_area = get_QRS_interval(ekg[1])
+        QRS_interval, QRS_area = get_QRS_interval(ekg[1])
         QRS_interval = np.nan
         QRS_area = np.nan
+        DAVID_interval = np.nan
+        DAVID_area = np.nan
 
     # Features that are independent of lead
+
     features['HR'] = HR
     features['RR_var'] = RR_var
-    features['QRS_interval'] = QRS_interval
-    features['QRS_area'] = QRS_area
+    for key in ekg_features:
+        features[key] = ekg_features[key]
 
     # Features that are calculated per lead
     for i in leads:
@@ -223,6 +229,7 @@ def get_avg_qrs_interval(ekg:np.ndarray, lead_num:int=1, window_factor:float=4.,
 
 
 def get_QRS_interval(ekg):
+    features = {}
     global_max = np.max(ekg)
     look_ahead = 3
     
@@ -231,7 +238,7 @@ def get_QRS_interval(ekg):
     bucket = []
     while ekg[i] < global_max * (1 - PEAK_DRIFT_THRESHOLD):
         i += 1
-    while ekg[i] > global_max * (1 - PEAK_DRIFT_THRESHOLD):
+    while ekg[i] >= global_max * (1 - PEAK_DRIFT_THRESHOLD):
         bucket.append((ekg[i], i))
         i += 1
     first_peak = max(bucket)[1]
@@ -261,10 +268,38 @@ def get_QRS_interval(ekg):
     right = i
 
     # QRS interval in ms
-    interval = (right - left) * 0.001
+    features['QRS_interval'] = (right - left) * 0.001
     
     # QRS area under curve
-    area = np.trapz(ekg[left:right] - np.min(ekg[left:right])) * 0.001
+    features['QRS_area'] = np.trapz(ekg[left:right] - np.min(ekg[left:right])) * 0.001
+
+    # Go to 2nd QRS peak
+    while ekg[i] < global_max * (1 - PEAK_DRIFT_THRESHOLD) and i < ekg.shape[0]-look_ahead-1:
+        i += 1
     
-    return interval, area
+    # Go to bottom of 2nd QRS peak
+    while ekg[i] > ekg[i-look_ahead] and i != ekg.shape[0]-look_ahead-2:
+        i -= 1
+    
+    # Look at a new window
+    window_size = max((i - left) * 0.001, 1) # If i == left then set it to 1
+    left = right
+    if left >= i:
+        right = left
+    else:
+        right = np.argmax(ekg[left:i]) + left
+
+    # DAVID interval in ms
+    features['DAVID_interval'] = (right - left) * 0.001
+    
+    # DAVID area under curve
+    features['DAVID_area'] = 0
+    if features['DAVID_interval'] != 0:
+        features['DAVID_area'] = np.trapz(ekg[left:right] - np.min(ekg[left:right])) * 0.001
+
+    # DAVID peak ratio
+    features['DAVID_peak_ratio'] = ekg[right] / global_max
+    features['DAVID_window_ratio'] = features['DAVID_interval']  / window_size
+    
+    return features
 
