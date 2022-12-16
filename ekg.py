@@ -28,7 +28,7 @@ DIAGNOSES = {
     "251180001": "Ventricular trigeminy",
     "251146004": "Low QRS voltages",
     "164947007": "Prolonged PR interval",
-    "164890007": "EKG: atrial flutter",
+    "164890007": "EKG: atrial flutter", # THIS ONE RIGHT HERE
     "111975006": "Prolonged QT interval",
     "164934002": "EKG: T wave abnormal",
     "55827005": "Left ventricular hypertrophy",
@@ -170,8 +170,7 @@ def bring_ekg_med_to_zero(ekg):
     """
     bring the median of a single lead to zero
     """
-    ekg = ekg - np.median(ekg)
-    return ekg
+    return ekg - np.median(ekg)
 
 def downsample(ekgs, num_points=100, lead_index=1):
     down_sampled_ekgs = []
